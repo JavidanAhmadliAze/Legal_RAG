@@ -201,7 +201,12 @@ def build_chain():
             seen_queries.add(final_query)
             per_query_top_k = 6 if len(search_units) > 1 else 10
             collected.extend(
-                retrieve(final_query, top_k=per_query_top_k, rerank_query=final_query)
+                retrieve(
+                    final_query,
+                    top_k=per_query_top_k,
+                    rerank_query=final_query,
+                    filters=parsed.filters or None,
+                )
             )
 
         chunks = _dedupe_chunks(collected)

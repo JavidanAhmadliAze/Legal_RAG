@@ -75,6 +75,7 @@ def run(
                 span.set_attribute("eval.fidelity", dr.fidelity)
                 span.set_attribute("eval.ndcg", dr.ndcg)
                 span.set_attribute("eval.xdcg", dr.xdcg)
+                span.set_attribute("eval.mrr", dr.mrr)
                 span.set_attribute("eval.max_relevance", dr.max_relevance)
                 span.set_attribute("eval.holes", dr.holes)
                 span.set_attribute("eval.passed", dr.passed)
@@ -83,6 +84,7 @@ def run(
                 f"  Fidelity     : {dr.fidelity:.4f}\n"
                 f"  NDCG         : {dr.ndcg:.4f}\n"
                 f"  XDCG         : {dr.xdcg:.4f}\n"
+                f"  MRR          : {dr.mrr:.4f}\n"
                 f"  Max Relevance: {dr.max_relevance}\n"
                 f"  Holes        : {dr.holes}"
             )

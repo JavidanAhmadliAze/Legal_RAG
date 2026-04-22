@@ -31,6 +31,7 @@ class DocumentRetrievalResult:
     fidelity: float
     ndcg: float
     xdcg: float
+    mrr: float
     max_relevance: float
     holes: bool
     passed: bool
@@ -86,12 +87,20 @@ def evaluate_document_retrieval(
     ixdcg = _dcg(ideal_rels, exponential=True)
     xdcg = xdcg_val / ixdcg if ixdcg > 0 else 0.0
 
+    # --- MRR -----------------------------------------------------------------
+    mrr = 0.0
+    for rank, doc_id in enumerate(retrieved_ids):
+        if ground_truth.get(doc_id, 0) > 0:
+            mrr = 1.0 / (rank + 1)
+            break
+
     passed = (ndcg >= ndcg_threshold) and (not holes)
 
     return DocumentRetrievalResult(
         fidelity=round(fidelity, 4),
         ndcg=round(ndcg, 4),
         xdcg=round(xdcg, 4),
+        mrr=round(mrr, 4),
         max_relevance=max_relevance,
         holes=holes,
         passed=passed,

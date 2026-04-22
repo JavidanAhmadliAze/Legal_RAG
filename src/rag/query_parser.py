@@ -5,12 +5,16 @@ Extracts terms that appear verbatim in Polish legal texts and must not be
 translated (system names, article references, Dz.U. citations). These are
 injected back into the retrieval query after translation so BM25/kNN can
 match them even when the translator drops or corrupts them.
+
+Also extracts metadata filters (year, act_type) to narrow OpenSearch results
+after BM25/kNN search but before RRF combining.
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from typing import Any
 
 # Ordered from most specific to least so longer matches win.
 _PRESERVE_RE = re.compile(
@@ -84,10 +88,23 @@ _POLISH_TERMS: list[tuple[re.Pattern[str], str]] = [
     ),
     (
         re.compile(
-            r"\blong[\s-]?term\s+eu\s+residence\s+permit\b",
+            r"\blong[\s-]?term\s+eu\s+residence\s+permit\b"
+            r"|\beu\s+long[\s-]?term\s+residence\s+permit\b"
+            r"|\blong[\s-]?term\s+resident\s+permit\b"
+            r"|\beu\s+resident\s+permit\b",
             re.IGNORECASE,
         ),
         "zezwolenie na pobyt rezydenta długoterminowego UE",
+    ),
+    (
+        re.compile(
+            r"\b(?:Polish\s+)?language\s+(?:certificate|test|exam|requirement|proficiency|level)\b"
+            r"|\blanguage\s+(?:skills?|knowledge)\b"
+            r"|\b[AB][12]\s+(?:level|proficiency|certificate)?\b"
+            r"|\bPolish\s+(?:level|proficiency|fluency|skills?)\b",
+            re.IGNORECASE,
+        ),
+        "znajomość języka polskiego poświadczenie B1",
     ),
     (
         re.compile(r"\brepatriation\s+visa\b", re.IGNORECASE),
@@ -167,10 +184,63 @@ _POLISH_TERMS: list[tuple[re.Pattern[str], str]] = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Metadata filter extraction
+# ---------------------------------------------------------------------------
+
+# Exact year: "Dz.U. 2024", "from/of/in 2024", "2024 ustawa/rozporządzenie"
+_YEAR_EXACT_RE = re.compile(
+    r"Dz\.U\.\s*((?:19|20)\d{2})"
+    r"|\b(?:from|of|in)\s+((?:19|20)\d{2})\b"
+    r"|\b((?:19|20)\d{2})\s+(?:ustawa|rozporządzenie|law|act|regulation)\b"
+    r"|\bustawa\s+z\s+(?:\S+\s+){0,3}((?:19|20)\d{2})\b",
+    re.IGNORECASE,
+)
+# Year lower/upper bounds
+_YEAR_GTE_RE = re.compile(r"\b(?:since|after)\s+((?:19|20)\d{2})\b", re.IGNORECASE)
+_YEAR_LTE_RE = re.compile(r"\b(?:before|until)\s+((?:19|20)\d{2})\b", re.IGNORECASE)
+
+# Act type: only explicit Polish legal-document terms + "international treaty"
+_ACT_TYPE_MAP: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\bustawa\b", re.IGNORECASE), "Ustawa"),
+    (re.compile(r"\brozporz[aą]dzeni\w*\b", re.IGNORECASE), "Rozporządzenie"),
+    (re.compile(r"\bobwieszczeni\w*\b", re.IGNORECASE), "Obwieszczenie"),
+    (re.compile(r"\bumowa\s+mi[eę]dzynarodow\w*\b", re.IGNORECASE), "Umowa międzynarodowa"),
+]
+
+
+def _extract_filters(text: str) -> dict[str, Any]:
+    filters: dict[str, Any] = {}
+
+    gte_m = _YEAR_GTE_RE.search(text)
+    lte_m = _YEAR_LTE_RE.search(text)
+    if gte_m or lte_m:
+        year_range: dict[str, int] = {}
+        if gte_m:
+            y = int(next(g for g in gte_m.groups() if g))
+            year_range["gte"] = y + 1 if "after" in gte_m.group(0).lower() else y
+        if lte_m:
+            y = int(next(g for g in lte_m.groups() if g))
+            year_range["lte"] = y - 1 if "before" in lte_m.group(0).lower() else y
+        filters["year"] = year_range
+    else:
+        m = _YEAR_EXACT_RE.search(text)
+        if m:
+            filters["year"] = int(next(g for g in m.groups() if g))
+
+    for pattern, act_type in _ACT_TYPE_MAP:
+        if pattern.search(text):
+            filters["act_type"] = act_type
+            break
+
+    return filters
+
+
 @dataclass
 class ParsedQuery:
     original: str
     preserved: list[str] = field(default_factory=list)
+    filters: dict[str, Any] = field(default_factory=dict)
 
     def preserved_hint(self) -> str:
         """Comma-separated list for inclusion in the translation prompt."""
@@ -185,11 +255,11 @@ class ParsedQuery:
 
 
 def parse_query(text: str) -> ParsedQuery:
-    """Extract verbatim-preserve terms from an English or mixed query."""
+    """Extract verbatim-preserve terms and metadata filters from a query."""
     seen: dict[str, None] = {}
     for m in _PRESERVE_RE.finditer(text):
         seen[m.group()] = None
     for pattern, canonical in _POLISH_TERMS:
         if pattern.search(text):
             seen[canonical] = None
-    return ParsedQuery(original=text, preserved=list(seen))
+    return ParsedQuery(original=text, preserved=list(seen), filters=_extract_filters(text))
