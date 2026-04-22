@@ -1,0 +1,36 @@
+[project]
+name = "legal-rag"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "pdfplumber>=0.11",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest"]
+index = [
+    "sentence-transformers>=3.0",
+    "torch>=2.0",
+    "opensearch-py>=2.4",
+    "psycopg[binary]>=3.1",
+    "redis>=5.0",
+]
+ui = [
+    "gradio>=4.0",
+    "langchain>=0.3",
+    "langchain-openai>=0.2",
+]
+monitoring = [
+    "arize-phoenix>=4.0",
+    "openinference-instrumentation-langchain>=0.1.12",
+    "opentelemetry-sdk>=1.24",
+    "opentelemetry-exporter-otlp>=1.24",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

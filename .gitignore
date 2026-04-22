@@ -1,0 +1,16 @@
+data/
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
+
+# Secrets
+.env
+
+# Editor / tool artefacts
+.codex
+=5.0
+/tmp/
