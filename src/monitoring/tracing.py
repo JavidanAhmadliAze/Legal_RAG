@@ -22,7 +22,9 @@ from phoenix.otel import register
 
 def init(project_name: str = "legal-rag", port: int = 6006) -> None:
     """Start Phoenix server and instrument LangChain + OpenAI. Call once at startup."""
-    px.launch_app(port=port)
+    import os
+    os.environ.setdefault("PHOENIX_PORT", str(port))
+    px.launch_app()
 
     tracer_provider = register(
         project_name=project_name,
