@@ -13,7 +13,7 @@ import gradio as gr
 import httpx
 
 API_BASE = os.getenv("API_BASE", "http://localhost:8000")
-_CLIENT = httpx.Client(timeout=120)
+_CLIENT = httpx.Client(timeout=300)
 
 
 # ---------------------------------------------------------------------------

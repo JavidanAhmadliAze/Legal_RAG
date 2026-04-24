@@ -207,6 +207,7 @@ def build_chain():
                 retrieve(
                     final_query,
                     top_k=per_query_top_k,
+                    fetch_k=5,
                     rerank_query=final_query,
                     filters=parsed.filters or None,
                 )

@@ -24,16 +24,6 @@ from src.rag.chain import (
 )
 from src.rag.retriever import retrieve
 
-
-def _get_model() -> ChatOpenAI:
-    return ChatOpenAI(
-        model="deepseek-chat",
-        api_key=os.environ["DEEPSEEK_API_KEY"],
-        base_url="https://api.deepseek.com",
-        temperature=0,
-    )
-
-
 _translate_chain: object = None
 
 
@@ -48,10 +38,21 @@ def _get_translate_chain():
                 base_url="https://api.deepseek.com",
                 streaming=False,
                 temperature=0,
+                request_timeout=30,
             )
             | StrOutputParser()
         )
     return _translate_chain
+
+
+def _get_llm() -> ChatOpenAI:
+    return ChatOpenAI(
+        model="deepseek-chat",
+        api_key=os.environ["DEEPSEEK_API_KEY"],
+        base_url="https://api.deepseek.com",
+        temperature=0,
+        request_timeout=90,
+    )
 
 
 async def _ainvoke_structured(model: ChatOpenAI, schema, messages: list):
@@ -91,7 +92,7 @@ async def clarify_with_user(
     state: AgentState,
 ) -> Command[Literal["write_research_brief", "__end__"]]:
     result = await _ainvoke_structured(
-        _get_model(),
+        _get_llm(),
         ClarifyWithUser,
         [
             HumanMessage(
@@ -130,7 +131,7 @@ async def clarify_with_user(
 
 async def write_research_brief(state: AgentState) -> dict:
     result = await _ainvoke_structured(
-        _get_model(),
+        _get_llm(),
         ResearchQuestion,
         [
             HumanMessage(
@@ -169,7 +170,7 @@ async def retriever(state: AgentState) -> dict:
     chunks = await asyncio.to_thread(
         retrieve,
         polish_query,
-        top_k=10,
+        top_k=5,
         rerank_query=polish_query,
         filters=filters or None,
     )
@@ -186,10 +187,9 @@ async def generator(state: AgentState) -> dict:
     human_messages = [m for m in state["messages"] if isinstance(m, HumanMessage)]
     question = human_messages[-1].content if human_messages else ""
 
-    # Guardian already validated the topic; trust what the retriever returned.
     context = _format_context(chunks) if chunks else _OUT_OF_SCOPE
 
-    llm = _get_model()
+    llm = _get_llm()
     response = await (_PROMPT | llm | StrOutputParser()).ainvoke(
         {"context": context, "question": question}
     )
