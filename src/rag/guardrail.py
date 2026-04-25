@@ -15,7 +15,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-MAX_WORDS = 120
+MAX_WORDS = 200
 
 _CLASSIFIER_PROMPT = ChatPromptTemplate.from_messages([
     ("system", (

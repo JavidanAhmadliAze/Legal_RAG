@@ -178,7 +178,7 @@ data/             # gitignored
 
 ## How retrieval works
 
-1. **Guardrail** — rejects queries over 120 words or off-topic (non-Polish-law) using a fast LLM classifier.
+1. **Guardrail** — rejects queries over 200 words or off-topic (non-Polish-law) using a fast LLM classifier.
 2. **Subquestion splitting** — complex multi-part questions are broken into up to 3 focused retrieval units.
 3. **Query parsing** — English legal phrases are mapped to canonical Polish equivalents (e.g. `"temporary protection"` → `ochrona czasowa`) so BM25 can match them exactly.
 4. **Translation** — DeepSeek generates a short Polish keyword query (5–12 words) per unit; preserved terms are appended if the translator omits them.
@@ -192,7 +192,7 @@ data/             # gitignored
 
 | Condition | Response |
 |---|---|
-| Query > 120 words | Rejected with word-count message |
+| Query > 200 words | Rejected with word-count message |
 | Off-topic (tax, labour, civil law, etc.) | "Outside my specialisation" |
 | No relevant chunks found (score < 1.5) | Out-of-scope message |
 | Relevant chunks found | Answer with legal citations |

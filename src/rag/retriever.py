@@ -26,11 +26,13 @@ _tracer = trace.get_tracer("legal-rag.retriever")
 # ---------------------------------------------------------------------------
 
 def _os_filter_clauses(filters: dict) -> list[dict]:
-    """Convert {field: value} to a list of OpenSearch term/range clauses."""
+    """Convert {field: value} to a list of OpenSearch term/terms/range clauses."""
     clauses = []
     for field, value in filters.items():
         if isinstance(value, dict):
             clauses.append({"range": {field: value}})
+        elif isinstance(value, (list, tuple)):
+            clauses.append({"terms": {field: list(value)}})
         else:
             clauses.append({"term": {field: value}})
     return clauses
@@ -84,6 +86,9 @@ def _metadata_filter(hits: list[dict], filters: dict) -> list[dict]:
                 if "gte" in value and v < value["gte"]:
                     match = False
                 if "lte" in value and v > value["lte"]:
+                    match = False
+            elif isinstance(value, (list, tuple)):
+                if src.get(field) not in value:
                     match = False
             elif src.get(field) != value:
                 match = False

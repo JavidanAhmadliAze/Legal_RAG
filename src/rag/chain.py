@@ -19,19 +19,30 @@ _SYSTEM = """You are a dedicated Polish legal assistant covering immigration, re
 foreigners law, border control, Ukrainian temporary protection, and related administrative \
 procedures in Poland.
 
-Rules:
-1. Answer directly and authoritatively. Do not mention "excerpts", "texts", "documents I have", \
-or any internal retrieval mechanics — speak as a legal expert, not a search engine.
-2. For every legal claim you make, you MUST cite the specific act name, journal reference, \
-and article number (e.g. "Art. 106c ustawy z dnia … (Dz.U. 2025 poz. 1794)"). \
-Never state a rule, deadline, or requirement without a citation. If the context does not contain \
-a citation for a point, omit that point rather than stating it uncited.
-3. If context is marked OUT_OF_SCOPE, the question falls outside your coverage area. \
-Tell the user clearly that this topic (e.g. general employment law, tax, civil law) is outside \
-your specialisation and recommend consulting a labour law or civil law specialist. \
-Do NOT attempt to answer from unrelated sources.
-4. Never invent legal provisions or deadlines.
-5. Always answer in English."""
+Grounding rules (STRICT — violations make the answer unusable):
+1. You may ONLY cite articles, acts, and Dz.U./M.P. journal references that appear verbatim \
+in the provided context. If an article number (e.g. "Art. 195", "Art. 30 ustawy o obywatelstwie") \
+is not present in the context, you MUST NOT mention it. No exceptions.
+2. NEVER write hedging phrases like "not provided in your context but…", "generally applicable", \
+"typically", "under general principles", "the Citizenship Act says…", or any variant. If the \
+context does not support a claim, drop the claim entirely.
+3. Your coverage is the Polish FOREIGNERS Act and closely-related acts (residence permits, \
+temporary protection, border law, work-permit conditions for foreigners). You do NOT cover: \
+Polish citizenship acquisition (Ustawa o obywatelstwie polskim), Karta Polaka, the Penal Code, \
+the Road Traffic Act, tax law, civil law, general employment/labour law. If the user asks about \
+any of these, say plainly: "This is outside my coverage (Polish foreigners law only). Please \
+consult a specialist in [the relevant area]." Do NOT attempt a partial answer from memory.
+4. For every legal claim you DO make, cite it inline using the exact journal reference from the \
+context (e.g. "Art. 133 ust. 2 ustawy o cudzoziemcach, Dz.U. 2025 poz. 1079").
+5. If a sub-question is covered by the context but another sub-question is not, answer the \
+covered part and refuse the uncovered part explicitly with rule 3 — do not silently fill gaps.
+6. If context is marked OUT_OF_SCOPE, state that the question falls outside your specialisation \
+and recommend a relevant specialist. Do not answer from unrelated sources.
+7. Do not invent deadlines, thresholds, percentages, fines, or article sub-numbers (e.g. do not \
+write "Art. 195(1)(2)" if the context only shows "Art. 195").
+8. Answer directly and authoritatively. Do not mention "excerpts", "texts", "documents I have", \
+or any internal retrieval mechanics.
+9. Always answer in English."""
 
 _PROMPT = ChatPromptTemplate.from_messages([
     ("system", _SYSTEM),
@@ -143,6 +154,96 @@ _OUT_OF_SCOPE = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Citation verifier — strip sentences citing articles/acts not in the context
+# ---------------------------------------------------------------------------
+
+# Matches the *base* article (letter suffix allowed, sub-numbers ignored).
+# "Art. 195(1)(2)" → captures "195"; "Art. 252a" → captures "252a".
+_ART_RE = re.compile(r"\bArt\.\s*(\d+[a-z]?)", re.IGNORECASE)
+_DZU_RE = re.compile(
+    r"\b(?:Dz\.?\s*U\.?|Dziennik\s+Ustaw|M\.?\s*P\.?|Monitor\s+Polski)\s*"
+    r"(\d{4})\s*poz\.\s*(\d+)",
+    re.IGNORECASE,
+)
+# Acts explicitly outside coverage — any mention is a hallucination signal.
+_OUT_OF_COVERAGE_RE = re.compile(
+    r"\b("
+    r"Polish\s+Citizenship\s+Act|Citizenship\s+Act|Ustawa\s+o\s+obywatelstwie(?:\s+polskim)?|"
+    r"Karta\s+Polaka|Pole'?s?\s+Card|"
+    r"Polish\s+Penal\s+Code|Penal\s+Code|Kodeks\s+karny|"
+    r"Road\s+Traffic\s+Act|Prawo\s+o\s+ruchu\s+drogowym|"
+    r"Civil\s+Code|Kodeks\s+cywilny|"
+    r"Labour\s+Code|Labor\s+Code|Kodeks\s+pracy|"
+    r"Tax\s+(?:Act|Code)|Ustawa\s+o\s+podatku"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+# Polish/Latin legal abbreviations that end in "." — must not trigger a
+# sentence boundary. We swap the period for \x00 before splitting and restore
+# it after.
+_ABBREV_RE = re.compile(
+    r"\b(Art|art|ust|lit|pkt|poz|Dz\.\s*U|M\.\s*P|Dz\.\s*Urz|nr|r|z|w|o|itd|itp|np|tj|ok)\.",
+    re.IGNORECASE,
+)
+
+
+def _split_sentences(text: str) -> list[str]:
+    masked = _ABBREV_RE.sub(lambda m: m.group(0).replace(".", "\x00"), text)
+    parts = re.split(r"(?<=[.!?])\s+(?=[A-ZĄĆĘŁŃÓŚŹŻ])", masked)
+    return [p.replace("\x00", ".") for p in parts]
+
+
+def _verify_citations(answer: str, context: str) -> str:
+    """Drop answer sentences that cite articles, Dz.U./M.P. items, or acts
+    not present in the retrieved context."""
+    if not answer or not context:
+        return answer
+
+    context_articles = {m.group(1).lower() for m in _ART_RE.finditer(context)}
+    context_dzu = {(m.group(1), m.group(2)) for m in _DZU_RE.finditer(context)}
+
+    sentences = _split_sentences(answer.strip())
+    kept: list[str] = []
+    dropped: list[str] = []
+
+    for sent in sentences:
+        reasons: list[str] = []
+
+        for m in _ART_RE.finditer(sent):
+            if m.group(1).lower() not in context_articles:
+                reasons.append(m.group(0))
+
+        for m in _DZU_RE.finditer(sent):
+            if (m.group(1), m.group(2)) not in context_dzu:
+                reasons.append(m.group(0))
+
+        scope_hit = _OUT_OF_COVERAGE_RE.search(sent)
+        if scope_hit:
+            reasons.append(scope_hit.group(0))
+
+        if reasons:
+            dropped.append(sent)
+        else:
+            kept.append(sent)
+
+    cleaned = " ".join(kept).strip()
+
+    if not cleaned and dropped:
+        return (
+            "I can't answer this from my indexed sources (Polish foreigners law). "
+            "Please consult a specialist for the relevant area of law."
+        )
+    if dropped:
+        cleaned += (
+            "\n\n_(Some content was removed because it cited articles or acts "
+            "outside the retrieved sources.)_"
+        )
+    return cleaned
+
+
 def _dedupe_chunks(chunks: list[dict]) -> list[dict]:
     seen: set[tuple[str, int]] = set()
     out: list[dict] = []
@@ -202,12 +303,12 @@ def build_chain():
             if final_query in seen_queries:
                 continue
             seen_queries.add(final_query)
-            per_query_top_k = 6 if len(search_units) > 1 else 10
+            per_query_top_k = 10 if len(search_units) > 1 else 15
             collected.extend(
                 retrieve(
                     final_query,
                     top_k=per_query_top_k,
-                    fetch_k=5,
+                    fetch_k=15,
                     rerank_query=final_query,
                     filters=parsed.filters or None,
                 )
@@ -215,21 +316,21 @@ def build_chain():
 
         chunks = _dedupe_chunks(collected)
         # Per-unit retrieval already applied Polish-Polish reranking; sort the merged
-        # pool by those scores and take the best 10.  A second English-query global
+        # pool by those scores and take the best 15.  A second English-query global
         # rerank is omitted because the cross-encoder degrades badly on English→Polish
         # pairs and inverts the ranking for queries without embedded Polish terms.
         chunks.sort(key=lambda c: c.get("_rerank_score", -99), reverse=True)
-        chunks = chunks[:10]
+        chunks = chunks[:15]
 
         relevant = [c for c in chunks if c.get("_rerank_score", -99) >= _RELEVANCE_THRESHOLD]
         if not relevant:
             return _OUT_OF_SCOPE
         return _format_context(relevant)
 
-    chain = (
-        {"context": retriever_step, "question": RunnablePassthrough()}
-        | _PROMPT
-        | llm
-        | StrOutputParser()
-    )
-    return chain
+    def run(question: str) -> str:
+        context = retriever_step(question)
+        messages = _PROMPT.format_messages(context=context, question=question)
+        raw = llm.invoke(messages).content
+        return _verify_citations(raw, context)
+
+    return run

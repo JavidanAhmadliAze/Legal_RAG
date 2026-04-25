@@ -67,6 +67,18 @@ _POLISH_TERMS: list[tuple[re.Pattern[str], str]] = [
         "zezwolenie na pobyt stały",
     ),
     (
+        re.compile(
+            r"\b5[- ]year[s]?\s+rule\b"
+            r"|\bfive[- ]year\s+rule\b"
+            r"|\b5\s+years?\s+(?:continuous|of\s+(?:legal\s+)?(?:stay|residence|living))\b"
+            r"|\bdon['’]?t\s+(?:want|have)\s+to\s+(?:keep\s+)?renew\b"
+            r"|\bstop\s+renewing\b"
+            r"|\bkeep\s+renewing\b",
+            re.IGNORECASE,
+        ),
+        "zezwolenie na pobyt rezydenta długoterminowego UE 5 lat nieprzerwanego pobytu",
+    ),
+    (
         re.compile(r"\bphoto(?:graph)?s?\b|\bpicture\b|\bportrait\b|\bheadshot\b", re.IGNORECASE),
         "fotografia",
     ),
@@ -200,9 +212,12 @@ _YEAR_EXACT_RE = re.compile(
 _YEAR_GTE_RE = re.compile(r"\b(?:since|after)\s+((?:19|20)\d{2})\b", re.IGNORECASE)
 _YEAR_LTE_RE = re.compile(r"\b(?:before|until)\s+((?:19|20)\d{2})\b", re.IGNORECASE)
 
-# Act type: only explicit Polish legal-document terms + "international treaty"
-_ACT_TYPE_MAP: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\bustawa\b", re.IGNORECASE), "Ustawa"),
+# Act type: only explicit Polish legal-document terms + "international treaty".
+# "Ustawa" expands to [Ustawa, Obwieszczenie] because the consolidated text of
+# a ustawa is published as an Obwieszczenie (jednolity tekst) — filtering to
+# Ustawa alone would drop the authoritative consolidated texts.
+_ACT_TYPE_MAP: list[tuple[re.Pattern[str], list[str] | str]] = [
+    (re.compile(r"\bustawa\b", re.IGNORECASE), ["Ustawa", "Obwieszczenie"]),
     (re.compile(r"\brozporz[aą]dzeni\w*\b", re.IGNORECASE), "Rozporządzenie"),
     (re.compile(r"\bobwieszczeni\w*\b", re.IGNORECASE), "Obwieszczenie"),
     (re.compile(r"\bumowa\s+mi[eę]dzynarodow\w*\b", re.IGNORECASE), "Umowa międzynarodowa"),

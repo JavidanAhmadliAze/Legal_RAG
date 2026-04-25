@@ -21,6 +21,7 @@ from src.rag.chain import (
     _TRANSLATE_PROMPT,
     _format_context,
     _OUT_OF_SCOPE,
+    _verify_citations,
 )
 from src.rag.retriever import retrieve
 
@@ -193,4 +194,5 @@ async def generator(state: AgentState) -> dict:
     response = await (_PROMPT | llm | StrOutputParser()).ainvoke(
         {"context": context, "question": question}
     )
+    response = _verify_citations(response, context)
     return {"messages": [AIMessage(content=response)]}

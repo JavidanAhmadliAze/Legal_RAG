@@ -129,5 +129,12 @@ def bulk_index(client: OpenSearch, docs: list[ChunkDoc]) -> tuple[int, int]:
         }
         for d in docs
     ]
-    success, errors = helpers.bulk(client, actions, raise_on_error=False)
+    success, errors = helpers.bulk(
+        client,
+        actions,
+        chunk_size=50,           # smaller batches keep requests under OS circuit-breaker
+        max_chunk_bytes=20 * 1024 * 1024,
+        request_timeout=120,
+        raise_on_error=False,
+    )
     return success, len(errors) if isinstance(errors, list) else 0

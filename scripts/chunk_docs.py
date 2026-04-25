@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Chunk all parsed documents in data/parsed/ using the page-based chunker.
+Chunk all parsed documents in data/parsed/ using the structure-aware chunker.
 Output is written to data/chunks/<document_id>.jsonl — one JSON line per chunk.
 
 Usage:
@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.chunk.by_page import chunk_by_page
+from src.chunk.by_structure import chunk_by_structure
 from src.io.storage import _PROJECT_ROOT
 
 _PARSED_DIR = _PROJECT_ROOT / "data" / "parsed"
@@ -37,7 +37,7 @@ def chunk_document(document_id: str) -> int:
     meta = load_meta(document_id)
     text = text_path.read_text(encoding="utf-8")
 
-    chunks = chunk_by_page(
+    chunks = chunk_by_structure(
         text,
         document_id=document_id,
         source_url=meta["source_url"],
