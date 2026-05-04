@@ -12,10 +12,10 @@ load_dotenv(Path(__file__).parent.parent.parent / ".env")
 from fastapi import FastAPI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-from src.agent.graph import build_graph
+from src.services.agents.graph import build_graph
 from src.api.routers import chat
 from src.db.session import create_tables
-from src.monitoring.tracing import init as init_tracing
+from src.services.monitoring import init as init_tracing
 
 # LangGraph's PostgresSaver uses psycopg3 — no +asyncpg driver prefix
 _CHECKPOINT_DSN = os.getenv(
@@ -26,8 +26,8 @@ _CHECKPOINT_DSN = os.getenv(
 
 async def _warmup_models() -> None:
     """Load embedding model and reranker into memory before the first request."""
-    from src.index.embeddings import embed_query
-    from src.rag.reranker import rerank
+    from src.services.embedding import embed_query
+    from src.services.reranking import rerank
     vec = await asyncio.to_thread(embed_query, "warmup")
     await asyncio.to_thread(rerank, "warmup", [{"text": "warmup"}], top_k=1)
 

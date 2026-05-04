@@ -8,29 +8,9 @@ Scope:
 
 from dataclasses import dataclass
 
-from src.fetch.http import fetch
+from src.services.fetcher.http import fetch
 
 _API_BASE = "https://api.sejm.gov.pl/eli/acts"
-
-# Keywords that identify labor-law acts (matched case-insensitively in the title).
-# Stems are used so a single entry covers all inflected forms.
-LABOR_KEYWORDS: list[str] = [
-    "kodeks pracy",
-    "inspekcja pracy",
-    "inspekcji pracy",
-    "rynek pracy",
-    "stosunek pracy",
-    "stosunku pracy",
-    "zatrudnien",       # zatrudnienie / zatrudnienia / zatrudnieniu ...
-    "pracowni",         # pracownik / pracownicy / pracownicze ...
-    "wynagrodzeni",     # wynagrodzenie / wynagrodzenia ...
-    "urlop",            # urlop / urlopu / urlopy ...
-    "związki zawodow",  # związki zawodowe / zawodowych ...
-    "układy zbiorowe",
-    "służby zatrudnienia",
-    "agencje pracy",
-    "agencja zatrudnienia",
-]
 
 
 @dataclass
@@ -73,11 +53,6 @@ def list_acts(year: int, journal: str = "DU") -> list[ActMeta]:
             )
         )
     return result
-
-
-def filter_labor(acts: list[ActMeta]) -> list[ActMeta]:
-    """Keep only acts whose title contains at least one labor-law keyword."""
-    return _filter_by(acts, LABOR_KEYWORDS)
 
 
 # ---------------------------------------------------------------------------

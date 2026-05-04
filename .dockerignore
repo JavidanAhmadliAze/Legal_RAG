@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# Secrets — NEVER commit
+# Secrets — NEVER bake into an image
 # ---------------------------------------------------------------------------
 .env
 .env.*
@@ -8,7 +8,6 @@
 *.envrc
 .envrc
 
-# API keys / tokens / credentials
 .secrets
 .secrets/
 secrets/
@@ -28,20 +27,15 @@ aws-credentials
 .boto
 auth.json
 
-# Tokens / session state
 *.token
 *.tokens
 *token.txt
 hf_token*
 .hf_token
 huggingface_token*
-openai_api_key*
-deepseek_api_key*
-anthropic_api_key*
 *api_key*
 *api-key*
 
-# Private keys / certificates
 *.pem
 *.key
 *.cer
@@ -56,22 +50,28 @@ id_ed25519
 id_ed25519.*
 .ssh/
 
-# DB connection files
 *.pgpass
 .pgpass
 .my.cnf
 
 # ---------------------------------------------------------------------------
-# Project data (large / regenerable / privacy-sensitive)
+# Git / VCS
+# ---------------------------------------------------------------------------
+.git
+.gitignore
+.gitattributes
+.github/
+
+# ---------------------------------------------------------------------------
+# Project data (large / regenerable)
 # ---------------------------------------------------------------------------
 data/
-!data/.gitkeep
 logs/
 *.log
 *.log.*
 
 # ---------------------------------------------------------------------------
-# Python
+# Python build / cache artefacts
 # ---------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
@@ -83,7 +83,7 @@ build/
 .eggs/
 *.so
 
-# Virtual envs
+# Virtual envs (rebuild inside the image)
 .venv/
 venv/
 env/
@@ -104,7 +104,29 @@ htmlcov/
 .ipynb_checkpoints/
 
 # ---------------------------------------------------------------------------
-# Docker / Airflow runtime
+# Tests (not needed in production images)
+# ---------------------------------------------------------------------------
+tests/
+
+# ---------------------------------------------------------------------------
+# Documentation / repo metadata
+# ---------------------------------------------------------------------------
+README.md
+*.md
+docs/
+LICENSE
+
+# ---------------------------------------------------------------------------
+# Docker meta (don't COPY these into the image)
+# ---------------------------------------------------------------------------
+Dockerfile
+Dockerfile.*
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
+
+# ---------------------------------------------------------------------------
+# Airflow runtime state
 # ---------------------------------------------------------------------------
 airflow/logs/
 airflow/plugins/

@@ -1,11 +1,13 @@
 import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from pathlib import Path
 
-_PROJECT_ROOT = Path(__file__).parent.parent.parent
-_RAW_DIR = _PROJECT_ROOT / "data" / "raw"
-_PARSED_DIR = _PROJECT_ROOT / "data" / "parsed"
+from src.services.config import get_storage_settings
+
+_STORAGE_SETTINGS = get_storage_settings()
+_PROJECT_ROOT = _STORAGE_SETTINGS.project_root
+_RAW_DIR = _STORAGE_SETTINGS.raw_dir
+_PARSED_DIR = _STORAGE_SETTINGS.parsed_dir
 
 
 @dataclass
