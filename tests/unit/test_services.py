@@ -102,10 +102,14 @@ def test_chunk_documents_returns_processed_ids(monkeypatch):
     monkeypatch.setattr(
         chunking_client,
         "chunk_by_structure",
-        lambda text, document_id, source_url: [
+        lambda text, document_id, source_url, **kwargs: [
             Chunk(
                 document_id=document_id,
                 source_url=source_url,
+                domain="example.com",
+                law_domain=kwargs.get("law_domain", "other"),
+                title=kwargs.get("title", ""),
+                subheading="",
                 index=0,
                 page_num=1,
                 anchor="Art. 1",
