@@ -170,31 +170,21 @@ Output (one word only):"""
 
 
 def _classify_llm(title: str, act_type: str) -> str:
-    """Call DeepSeek to classify a document when rule-based patterns fail."""
-    import json as _json
-    import os
-    import urllib.request
+    """Call the configured LLM to classify a document when rule-based patterns fail."""
+    from langchain_core.messages import HumanMessage
 
-    api_key = os.environ.get("DEEPSEEK_API_KEY", "")
-    if not api_key:
-        return "other"
-    payload = _json.dumps({
-        "model": "deepseek-chat",
-        "messages": [{"role": "user", "content": _LLM_CLASSIFY_PROMPT.format(
-            title=title, act_type=act_type,
-        )}],
-        "temperature": 0,
-        "max_tokens": 5,
-    }).encode()
-    req = urllib.request.Request(
-        "https://api.deepseek.com/chat/completions",
-        data=payload,
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
-    )
+    from src.services.llm import get_llm_client
+
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            body = _json.loads(resp.read())
-        label = body["choices"][0]["message"]["content"].strip().lower().split()[0]
+        model = get_llm_client().build_chat_model(
+            streaming=False, request_timeout=15
+        )
+        prompt = _LLM_CLASSIFY_PROMPT.format(title=title, act_type=act_type)
+        response = model.invoke([HumanMessage(content=prompt)])
+        content = (response.content or "").strip().lower()
+        if not content:
+            return "other"
+        label = content.split()[0]
         return label if label in _VALID_DOMAINS else "other"
     except Exception:
         return "other"

@@ -11,7 +11,6 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --extra index --extra ui --extra monitoring --extra agent
 
 COPY src/ src/
-COPY scripts/ scripts/
 
 ENV PYTHONUNBUFFERED=1
 ENV PATH="/app/.venv/bin:$PATH"

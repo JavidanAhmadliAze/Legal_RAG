@@ -1,4 +1,4 @@
-from src.services.agents.chain import _split_into_subquestions
+from src.services.agents._common import _split_into_subquestions
 
 
 def test_split_into_subquestions_prefers_substantive_legal_sentences():

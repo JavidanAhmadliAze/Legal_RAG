@@ -1,4 +1,4 @@
-from src.services.agents.query_parser import parse_query
+from src.services.agents.nodes.query_parser import parse_query
 
 
 def test_parse_query_preserves_english_temporary_residence_phrase():

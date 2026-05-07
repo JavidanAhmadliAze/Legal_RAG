@@ -71,13 +71,14 @@ services:
     environment:
       - PHOENIX_HOST=phoenix
       - CHECKPOINT_DSN=postgresql://legal:legal@postgres:5432/legal_rag
-      - POSTGRES_DSN=postgresql+asyncpg://legal:legal@postgres:5432/legal_rag
+      - POSTGRES_DSN=postgresql://legal:legal@postgres:5432/legal_rag
       - DATABASE_URL=postgresql+asyncpg://legal:legal@postgres:5432/legal_rag
       - OPENSEARCH_HOST=opensearch
       - OPENSEARCH_PORT=9200
       - REDIS_URL=redis://redis:6379/0
+      - EMBEDDING_SHOW_PROGRESS=false
     volumes:
-      - hf_cache:/root/.cache/huggingface
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
       - ./data:/app/data
     depends_on:
       postgres:
@@ -96,6 +97,9 @@ services:
       - "7860:7860"
     environment:
       - API_BASE=http://api:8000
+      - GRADIO_SERVER_NAME=0.0.0.0
+    volumes:
+      - ./src:/app/src:ro
     depends_on:
       - api
 
@@ -122,7 +126,7 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?set AIRFLOW_FERNET_KEY in .env (generate via: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\")}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?set AIRFLOW_FERNET_KEY in .env}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       PYTHONPATH: /opt/airflow/project
     volumes:
@@ -149,7 +153,7 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?set AIRFLOW_FERNET_KEY in .env (generate via: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\")}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?set AIRFLOW_FERNET_KEY in .env}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       PYTHONPATH: /opt/airflow/project
       OPENSEARCH_HOST: opensearch
@@ -179,7 +183,7 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
-      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?set AIRFLOW_FERNET_KEY in .env (generate via: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\")}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?set AIRFLOW_FERNET_KEY in .env}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       PYTHONPATH: /opt/airflow/project
     volumes:

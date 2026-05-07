@@ -47,7 +47,7 @@ from opentelemetry import trace
 import asyncio
 
 from src.services.agents.chain import build_chain
-from src.services.agents.retriever import aretrieve
+from src.services.agents.nodes.retriever import aretrieve
 
 _tracer = trace.get_tracer("legal-rag.evaluator")
 

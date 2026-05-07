@@ -42,9 +42,10 @@ from opentelemetry import trace
 import asyncio
 
 from src.eval.document_retrieval import evaluate_document_retrieval
-from src.services.agents.query_parser import _extract_filters
-from src.services.agents.retriever import aretrieve
-from src.services.llm import TRANSLATE_PROMPT, get_llm_client
+from src.services.agents.prompts import TRANSLATE_PROMPT
+from src.services.agents.nodes.query_parser import _extract_filters
+from src.services.agents.nodes.retriever import aretrieve
+from src.services.llm import get_llm_client
 from src.services.monitoring import init as init_tracing
 
 # Use the externally-running Phoenix (don't relaunch a local one).

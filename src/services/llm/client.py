@@ -47,3 +47,18 @@ class LLMClient:
                 request_timeout=self._settings.request_timeout_s,
             )
         return self._translator
+
+    def build_chat_model(
+        self,
+        *,
+        streaming: bool,
+        request_timeout: float,
+    ) -> ChatOpenAI:
+        return ChatOpenAI(
+            model=self._model,
+            api_key=self._api_key(),
+            base_url=self._base_url,
+            streaming=streaming,
+            temperature=self._settings.temperature,
+            request_timeout=request_timeout,
+        )
